@@ -43,8 +43,7 @@ lazy val `named-entity-recognizer` = (project in file(".")).
         classifier "models-spanish",
       "eu.fbk.dh"                     %  "tint-runner"          % "1.0-SNAPSHOT"
         excludeAll ExclusionRule(organization = "org.apache.logging.log4j"),
-      "org.hathitrust.htrc"           %% "dataapi-client"       % "0.5",
-      "org.hathitrust.htrc"           %% "data-model"           % "1.1",
+      "org.hathitrust.htrc"           %% "dataapi-client"       % "0.6",
       "org.hathitrust.htrc"           %% "scala-utils"          % "2.2.1",
       "com.nrinaudo"                  %% "kantan.csv"           % "0.4.0",
       "org.rogach"                    %% "scallop"              % "3.1.2",
