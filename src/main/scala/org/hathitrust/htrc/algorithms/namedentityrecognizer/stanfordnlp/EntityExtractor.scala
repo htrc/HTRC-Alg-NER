@@ -50,7 +50,7 @@ class EntityExtractor(nlp: StanfordCoreNLP) {
   }
 
   def extractPageEntities(page: HtrcPage, dehyphenateAtEol: Boolean = true): List[Entity] = {
-    val textOptions = if (dehyphenateAtEol) Seq(TrimLines, RemoveEmptyLines, FixHyphenation) else Seq.empty
+    val textOptions = if (dehyphenateAtEol) Seq(TrimLines, RemoveEmptyLines, DehyphenateAtEol) else Seq.empty
     val pageText = page.text(textOptions: _*)
     extractTextEntities(pageText)
   }
