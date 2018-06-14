@@ -44,7 +44,7 @@ lazy val `named-entity-recognizer` = (project in file(".")).
       "eu.fbk.dh"                     %  "tint-runner"          % "1.0-SNAPSHOT"
         excludeAll ExclusionRule(organization = "org.apache.logging.log4j"),
       "org.hathitrust.htrc"           %% "dataapi-client"       % "0.6",
-      "org.hathitrust.htrc"           %% "scala-utils"          % "2.2.1",
+      "org.hathitrust.htrc"           %% "scala-utils"          % "2.5.1",
       "com.nrinaudo"                  %% "kantan.csv"           % "0.4.0",
       "org.rogach"                    %% "scallop"              % "3.1.2",
       "com.gilt"                      %% "gfc-time"             % "0.0.7",
