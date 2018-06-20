@@ -24,12 +24,25 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
       version => appVendor.map(
         vendor => s"$name $version\n$vendor"))).getOrElse(Main.appName))
 
+  val numPartitions: ScallopOption[Int] = opt[Int]("num-partitions",
+    descr = "The number of partitions to split the input set of HT IDs into, " +
+      "for increased parallelism",
+    argName = "N",
+    validate = 0 <
+  )
+
   val numCores: ScallopOption[Int] = opt[Int]("num-cores",
     descr = "The number of CPU cores to use (if not specified, uses all available cores)",
-    short = 'c',
     argName = "N",
-    validate = 0 <,
-    default = Some(Runtime.getRuntime.availableProcessors())
+    short = 'c',
+    validate = 0 <
+  )
+
+  val dataApiUrl: ScallopOption[URL] = opt[URL]("dataapi-url",
+    descr = "The DataAPI endpoint URL (Note: DATAAPI_TOKEN environment variable must be set)",
+    argName = "URL",
+    default = Some(new URL("https://dataapi-algo.htrc.indiana.edu/data-api")),
+    noshort = true
   )
 
   val pairtreeRootPath: ScallopOption[File] = opt[File]("pairtree",
@@ -37,29 +50,21 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     argName = "DIR"
   )
 
+  val outputPath: ScallopOption[File] = opt[File]("output",
+    descr = "The folder where the output will be written to",
+    argName = "DIR",
+    required = true
+  )
+
   val language: ScallopOption[String] = opt[String]("language",
     descr = s"""ISO 639-1 language code (supported languages: ${Main.supportedLanguages.mkString(", ")})""",
-    required = true,
     argName = "LANG",
+    required = true,
     validate = Main.supportedLanguages.contains
   )
 
-  val outputPath: ScallopOption[File] = opt[File]("output",
-    descr = "Write the output to DIR",
-    required = true,
-    argName = "DIR"
-  )
-
-  val dataApiUrl: ScallopOption[URL] = opt[URL]("dataapi-url",
-    descr = "The DataAPI endpoint URL",
-    default = Some(new URL("https://dataapi-algo.htrc.indiana.edu/data-api")),
-    argName = "URL",
-    noshort = true
-  )
-
   val htids: ScallopOption[File] = trailArg[File]("htids",
-    descr = "The HT ids to process (if not provided, will read from stdin)",
-    required = false
+    descr = "The HT ids to process (if not provided, will read from stdin)"
   )
 
   validateFileExists(pairtreeRootPath)

@@ -4,27 +4,15 @@ import java.util.Locale
 
 import edu.stanford.nlp.ling.CoreAnnotations
 import edu.stanford.nlp.pipeline.{Annotation, StanfordCoreNLP}
-import org.hathitrust.htrc.algorithms.namedentityrecognizer.utils.Helper.loadPropertiesFromClasspath
-import org.hathitrust.htrc.data.{HtrcPage, HtrcVolume}
 import org.hathitrust.htrc.data.TextOptions._
-import org.slf4j.LoggerFactory
+import org.hathitrust.htrc.data.{HtrcPage, HtrcVolume}
 
 import scala.collection.JavaConverters._
-import scala.util.{Failure, Success}
 
 object EntityExtractor {
-  private val logger = LoggerFactory.getLogger(getClass)
-
-  def apply(locale: Locale): EntityExtractor = {
-    val language = locale.getLanguage
-
-    logger.info(s"Loading the ${locale.getDisplayLanguage} NER pipeline...")
-    val props = loadPropertiesFromClasspath(s"/nlp/config/$language.properties") match {
-      case Success(p) => p
-      case Failure(_) => throw EntityExtractorException(s"No language models available for $language")
-    }
-
-    new EntityExtractor(new StanfordCoreNLP(props))
+  def apply(locale: Locale): EntityExtractor = NLPInstances.forLocale(locale) match {
+    case Some(nlp) => new EntityExtractor(nlp)
+    case None => throw EntityExtractorException(s"No language models available for $language")
   }
 }
 
