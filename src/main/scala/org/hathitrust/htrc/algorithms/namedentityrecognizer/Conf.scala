@@ -32,6 +32,11 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     default = Some(Runtime.getRuntime.availableProcessors())
   )
 
+  val pairtreeRootPath: ScallopOption[File] = opt[File]("pairtree",
+    descr = "The path to the pairtree root hierarchy to process",
+    argName = "DIR"
+  )
+
   val language: ScallopOption[String] = opt[String]("language",
     descr = s"""ISO 639-1 language code (supported languages: ${Main.supportedLanguages.mkString(", ")})""",
     required = true,
@@ -45,10 +50,11 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     argName = "DIR"
   )
 
-  val dataApiUrl: ScallopOption[URL] = opt[URL]("dataApiUrl",
+  val dataApiUrl: ScallopOption[URL] = opt[URL]("dataapi-url",
     descr = "The DataAPI endpoint URL",
     default = Some(new URL("https://dataapi-algo.htrc.indiana.edu/data-api")),
-    argName = "URL"
+    argName = "URL",
+    noshort = true
   )
 
   val htids: ScallopOption[File] = trailArg[File]("htids",
@@ -56,6 +62,7 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     required = false
   )
 
+  validateFileExists(pairtreeRootPath)
   validateFileExists(htids)
   verify()
 }

@@ -8,6 +8,7 @@ import com.gilt.gfc.time.Timer
 import kantan.csv._
 import kantan.csv.ops._
 import org.hathitrust.htrc.algorithms.namedentityrecognizer.stanfordnlp.{Entity, EntityExtractor}
+import org.hathitrust.htrc.data.{HtrcVolume, HtrcVolumeId}
 import org.hathitrust.htrc.tools.dataapi.DataApiClient
 import org.hathitrust.htrc.tools.scala.io.IOUtils._
 import org.slf4j.{Logger, LoggerFactory}
@@ -28,12 +29,8 @@ object Main {
     val language = conf.language()
     val outputPath = conf.outputPath()
     val dataApiUrl = conf.dataApiUrl()
+    val pairtreeRootPath = conf.pairtreeRootPath.toOption.map(_.toString)
     val htidsOpt = conf.htids.toOption
-
-    val dataApiToken = Option(System.getenv("DATAAPI_TOKEN")) match {
-      case Some(token) => token
-      case None => throw new RuntimeException("DATAAPI_TOKEN environment variable is missing")
-    }
 
     logger.info("Starting...")
     logger.debug(s"Using $numCores cores")
@@ -60,38 +57,60 @@ object Main {
     // DefaultPaths.DEFAULT_NER_MUC_MODEL
     // DefaultPaths.DEFAULT_NER_CONLL_MODEL
 
-    logger.info(f"Downloading ${htids.size}%,d volumes from $dataApiUrl...")
+    val volumes = pairtreeRootPath match {
+      case Some(path) =>
+        logger.info("Processing volumes from {}", path)
+        htids.map { id =>
+          val pairtreeVolume =
+            HtrcVolumeId
+              .parseUnclean(id)
+              .map(_.toPairtreeDoc(path))
+              .get
 
-    val dataApi = DataApiClient.Builder()
-      .setApiUrl(dataApiUrl.toString)
-      .setAuthToken(dataApiToken)
-      .setUseTempStorage()
-      .build()
+          HtrcVolume.from(pairtreeVolume)(Codec.UTF8).get
+        }
+
+      case None =>
+        val dataApiToken = Option(System.getenv("DATAAPI_TOKEN")) match {
+          case Some(token) => token
+          case None => throw new RuntimeException("DATAAPI_TOKEN environment variable is missing")
+        }
+
+        logger.info("Processing volumes from {}", dataApiUrl)
+
+        val dataApi = DataApiClient.Builder()
+          .setApiUrl(dataApiUrl.toString)
+          .setAuthToken(dataApiToken)
+          .setUseTempStorage()
+          .build()
+
+        val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+        val volumes = using(Await.result(dataApi.retrieveVolumes(htids)(Codec.UTF8, ec), Duration.Inf))(_.toList)
+        volumes
+    }
 
     val entitiesFile = new File(outputPath, "entities.csv")
 
-    using(Await.result(dataApi.retrieveVolumes(htids), Duration.Inf)) { volumeIterator =>
-      logger.info(s"Performing entity extraction and saving entities to $entitiesFile...")
-      val random = Random
+    logger.info(s"Performing entity extraction and saving entities to $entitiesFile...")
+    val random = Random
 
-      val volumesEntities =
-        for (vol <- volumeIterator) yield {
-          logger.debug(s"Processing volume ${vol.volumeId}")
-          vol -> entityExtractor.extractVolumeEntities(vol)
-        }
-
-      val rows =
-        for {
-          (vol, pagesEntities) <- volumesEntities
-          (page, entities) <- pagesEntities
-          Entity(entity, entityType) <- random.shuffle(entities)
-        } yield (vol.volumeId.uncleanId, page.seq, entity, entityType)
-
-      val writer = new OutputStreamWriter(new FileOutputStream(entitiesFile), codec.charSet)
-      val csvConfig = rfc.withHeader("volId", "pageSeq", "entity", "type")
-      using(writer.asCsvWriter[(String, String, String, String)](csvConfig)) { out =>
-        out.write(rows)
+    val volumesEntities =
+      for (vol <- volumes) yield {
+        logger.debug(s"Processing volume ${vol.volumeId}")
+        vol -> entityExtractor.extractVolumeEntities(vol)
       }
+
+    val rows =
+      for {
+        (vol, pagesEntities) <- volumesEntities
+        (page, entities) <- pagesEntities
+        Entity(entity, entityType) <- random.shuffle(entities)
+      } yield (vol.volumeId.uncleanId, page.seq, entity, entityType)
+
+    val writer = new OutputStreamWriter(new FileOutputStream(entitiesFile), codec.charSet)
+    val csvConfig = rfc.withHeader("volId", "pageSeq", "entity", "type")
+    using(writer.asCsvWriter[(String, String, String, String)](csvConfig)) { out =>
+      out.write(rows)
     }
 
     // record elapsed time and report it
