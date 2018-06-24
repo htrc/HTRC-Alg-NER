@@ -72,5 +72,7 @@ eval DATAAPI_TOKEN="$auth_token" \
 CHILD_PID="$!"
 wait
 
-echo "volId,pageSeq,entity,type" > "$output_dir"/entities.csv
-cat "$output_dir"/csv/* >> "$output_dir"/entities.csv && rm -rf "$output_dir"/csv
+if [[ $? == 0 ]]; then
+    echo "vol_id,page_seq,entity,type" > "$output_dir"/entities.csv
+    cat "$output_dir"/csv/* >> "$output_dir"/entities.csv && rm -rf "$output_dir"/csv
+fi
