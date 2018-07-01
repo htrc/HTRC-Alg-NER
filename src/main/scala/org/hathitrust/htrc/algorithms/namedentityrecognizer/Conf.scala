@@ -3,7 +3,7 @@ package org.hathitrust.htrc.algorithms.namedentityrecognizer
 import java.io.File
 import java.net.URL
 
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop.{Scallop, ScallopConf, ScallopHelpFormatter, ScallopOption, SimpleOption}
 
 /**
   * Command line argument configuration
@@ -11,6 +11,17 @@ import org.rogach.scallop.{ScallopConf, ScallopOption}
   * @param arguments The cmd line args
   */
 class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
+  appendDefaultToDescription = true
+  helpFormatter = new ScallopHelpFormatter {
+    override def getOptionsHelp(s: Scallop): String = {
+      super.getOptionsHelp(s.copy(opts = s.opts.map {
+        case opt: SimpleOption if !opt.required =>
+          opt.copy(descr = "(Optional) " + opt.descr)
+        case other => other
+      }))
+    }
+  }
+
   val (appTitle, appVersion, appVendor) = {
     val p = getClass.getPackage
     val nameOpt = Option(p).flatMap(p => Option(p.getImplementationTitle))
