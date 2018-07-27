@@ -1,5 +1,7 @@
 package org.hathitrust.htrc.algorithms.namedentityrecognizer
 
+import java.io.FileInputStream
+import java.security.KeyStore
 import java.util.Locale
 import java.util.concurrent.Executors
 
@@ -9,7 +11,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.SparkSession
 import org.hathitrust.htrc.algorithms.namedentityrecognizer.Helper.logger
 import org.hathitrust.htrc.algorithms.namedentityrecognizer.stanfordnlp.{Entity, EntityExtractor}
-import org.hathitrust.htrc.data.TextOptions.{DehyphenateAtEol, RemoveEmptyLines, TrimLines}
+import org.hathitrust.htrc.data.ops.TextOptions._
 import org.hathitrust.htrc.data.{HtrcVolume, HtrcVolumeId}
 import org.hathitrust.htrc.tools.dataapi.DataApiClient
 import org.hathitrust.htrc.tools.scala.io.IOUtils._
@@ -40,6 +42,8 @@ object Main {
     val dataApiUrl = conf.dataApiUrl()
     val pairtreeRootPath = conf.pairtreeRootPath.toOption.map(_.toString)
     val outputPath = conf.outputPath()
+    val keyStoreFile = conf.keyStore()
+    val keyStorePwd = conf.keyStorePwd()
     val language = conf.language()
     val htids = conf.htids.toOption match {
       case Some(file) => Source.fromFile(file).getLines().toSeq
@@ -94,10 +98,16 @@ object Main {
           logger.info("Processing volumes from {}", dataApiUrl)
 
           idsRDD.mapPartitions { ids =>
+            val keyStore = KeyStore.getInstance("PKCS12")
+            using(new FileInputStream(keyStoreFile)) { ksf =>
+              keyStore.load(ksf, keyStorePwd.toCharArray)
+            }
+
             val dataApi = DataApiClient.Builder()
               .setApiUrl(dataApiUrl.toString)
               .setAuthToken(dataApiToken)
               .setUseTempStorage(failOnError = false)
+              .useClientCertKeyStore(keyStore, keyStorePwd)
               .build()
 
             val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
