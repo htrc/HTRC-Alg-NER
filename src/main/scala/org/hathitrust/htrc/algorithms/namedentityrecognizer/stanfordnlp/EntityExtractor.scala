@@ -4,7 +4,7 @@ import java.util.Locale
 
 import edu.stanford.nlp.ling.CoreAnnotations
 import edu.stanford.nlp.pipeline.{Annotation, StanfordCoreNLP}
-import org.hathitrust.htrc.data.TextOptions._
+import org.hathitrust.htrc.data.ops.TextOptions._
 import org.hathitrust.htrc.data.{HtrcPage, HtrcVolume}
 
 import scala.collection.JavaConverters._
