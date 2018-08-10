@@ -76,7 +76,8 @@ lazy val `named-entity-recognizer` = (project in file(".")).
         classifier "models-spanish",
       "eu.fbk.dh"                     %  "tint-runner"          % "1.0-SNAPSHOT"
         excludeAll ExclusionRule(organization = "org.apache.logging.log4j"),
-      "org.rogach"                    %% "scallop"              % "3.1.2",
+      "com.typesafe"                  %  "config"               % "1.3.3",
+      "org.rogach"                    %% "scallop"              % "3.1.3",
       "com.gilt"                      %% "gfc-time"             % "0.0.7",
       "ch.qos.logback"                %  "logback-classic"      % "1.2.3",
       "org.codehaus.janino"           %  "janino"               % "3.0.8",

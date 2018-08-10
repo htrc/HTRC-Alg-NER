@@ -3,95 +3,68 @@ package org.hathitrust.htrc.algorithms.namedentityrecognizer
 import java.io.File
 import java.net.URL
 
-import org.rogach.scallop.{Scallop, ScallopConf, ScallopHelpFormatter, ScallopOption, SimpleOption}
+import com.typesafe.config.Config
 
-/**
-  * Command line argument configuration
-  *
-  * @param arguments The cmd line args
-  */
-class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
-  appendDefaultToDescription = true
-  helpFormatter = new ScallopHelpFormatter {
-    override def getOptionsHelp(s: Scallop): String = {
-      super.getOptionsHelp(s.copy(opts = s.opts.map {
-        case opt: SimpleOption if !opt.required =>
-          opt.copy(descr = "(Optional) " + opt.descr)
-        case other => other
-      }))
-    }
+
+case class Conf(numPartitions: Option[Int],
+                numCores: String,
+                pairtreeRootPath: Option[String],
+                dataApiUrl: Option[URL],
+                dataApiToken: Option[String],
+                keyStoreFile: Option[File],
+                keyStorePwd: Option[String],
+                outputPath: File,
+                language: String)
+
+object Conf {
+  def fromConfig(config: Config): Conf = {
+    val numPartitions = if (config.hasPath("num-partitions")) Some(config.getInt("num-partitions")) else None
+    val numCores = if (config.hasPath("num-cores")) config.getString("num-cores") else Defaults.NUMCORES
+    val pairtreeRootPath = if (config.hasPath("pairtree")) Some(config.getString("pairtree")) else None
+    val dataApiUrl = if (config.hasPath("dataapi-url")) Some(new URL(config.getString("dataapi-url"))) else Some(Defaults.DATAAPI_URL)
+    val dataApiToken = if (config.hasPath("dataapi-token")) Some(config.getString("dataapi-token")) else None
+    val keyStoreFile = if (config.hasPath("keystore")) Some(new File(config.getString("keystore"))) else None
+    val keyStorePwd = if (config.hasPath("keystore-pwd")) Some(config.getString("keystore-pwd")) else None
+    val outputPath = new File(config.getString("output"))
+    val language = config.getString("language")
+
+    Conf(
+      numPartitions = numPartitions,
+      numCores = numCores,
+      pairtreeRootPath = pairtreeRootPath,
+      dataApiUrl = dataApiUrl,
+      dataApiToken = dataApiToken,
+      keyStoreFile = keyStoreFile,
+      keyStorePwd = keyStorePwd,
+      outputPath = outputPath,
+      language = language
+    )
   }
 
-  val (appTitle, appVersion, appVendor) = {
-    val p = getClass.getPackage
-    val nameOpt = Option(p).flatMap(p => Option(p.getImplementationTitle))
-    val versionOpt = Option(p).flatMap(p => Option(p.getImplementationVersion))
-    val vendorOpt = Option(p).flatMap(p => Option(p.getImplementationVendor))
-    (nameOpt, versionOpt, vendorOpt)
+  def fromCmdLine(cmdLineArgs: CmdLineArgs): Conf = {
+    val numPartitions = cmdLineArgs.numPartitions.toOption
+    val numCores = cmdLineArgs.numCores.map(_.toString).getOrElse(Defaults.NUMCORES)
+    val pairtreeRootPath = cmdLineArgs.pairtreeRootPath.toOption.map(_.toString)
+    val dataApiUrl = cmdLineArgs.dataApiUrl.toOption
+    val dataApiToken = Option(System.getenv("DATAAPI_TOKEN"))
+    val keyStoreFile = cmdLineArgs.keyStore.toOption
+    val keyStorePwd = cmdLineArgs.keyStorePwd.toOption
+    val outputPath = cmdLineArgs.outputPath()
+    val language = cmdLineArgs.language()
+
+    if (pairtreeRootPath.isEmpty && dataApiToken.isEmpty)
+      throw new RuntimeException("DATAAPI_TOKEN environment variable is missing")
+
+    Conf(
+      numPartitions = numPartitions,
+      numCores = numCores,
+      pairtreeRootPath = pairtreeRootPath,
+      dataApiUrl = dataApiUrl,
+      dataApiToken = dataApiToken,
+      keyStoreFile = keyStoreFile,
+      keyStorePwd = keyStorePwd,
+      outputPath = outputPath,
+      language = language
+    )
   }
-
-  version(appTitle.flatMap(
-    name => appVersion.flatMap(
-      version => appVendor.map(
-        vendor => s"$name $version\n$vendor"))).getOrElse(Main.appName))
-
-  val numPartitions: ScallopOption[Int] = opt[Int]("num-partitions",
-    descr = "The number of partitions to split the input set of HT IDs into, " +
-      "for increased parallelism",
-    argName = "N",
-    validate = 0 <
-  )
-
-  val numCores: ScallopOption[Int] = opt[Int]("num-cores",
-    descr = "The number of CPU cores to use (if not specified, uses all available cores)",
-    argName = "N",
-    short = 'c',
-    validate = 0 <
-  )
-
-  val dataApiUrl: ScallopOption[URL] = opt[URL]("dataapi-url",
-    descr = "The DataAPI endpoint URL (Note: DATAAPI_TOKEN environment variable must be set)",
-    argName = "URL",
-    default = Some(new URL("https://dataapi-algo.htrc.indiana.edu/data-api")),
-    noshort = true
-  )
-
-  val pairtreeRootPath: ScallopOption[File] = opt[File]("pairtree",
-    descr = "The path to the pairtree root hierarchy to process",
-    argName = "DIR"
-  )
-
-  val outputPath: ScallopOption[File] = opt[File]("output",
-    descr = "The folder where the output will be written to",
-    argName = "DIR",
-    required = true
-  )
-
-  val keyStore: ScallopOption[File] = opt[File]("keystore",
-    descr = "The keystore containing the client certificate to use for DataAPI",
-    argName = "FILE",
-    required = true
-  )
-
-  val keyStorePwd: ScallopOption[String] = opt[String]("keystore-pwd",
-    descr = "The keystore password",
-    argName = "PASSWORD",
-    required = true
-  )
-
-  val language: ScallopOption[String] = opt[String]("language",
-    descr = s"""ISO 639-1 language code (supported languages: ${Main.supportedLanguages.mkString(", ")})""",
-    argName = "LANG",
-    required = true,
-    validate = Main.supportedLanguages.contains
-  )
-
-  val htids: ScallopOption[File] = trailArg[File]("htids",
-    descr = "The HT ids to process (if not provided, will read from stdin)"
-  )
-
-  validateFileExists(pairtreeRootPath)
-  validateFileExists(keyStore)
-  validateFileExists(htids)
-  verify()
 }
