@@ -52,12 +52,27 @@ while read -r line; do declare "$line"; done < <(sed -rn 's;^([^ =]+)\s?=\s?(.*)
 [ -z "$output_dir" ] && error "output_dir not set by the Agent" 1
 [ -s "$workset" ] || error "$workset does not exist or is empty" 2
 
+# construct algorithm configuration file
+cat << EOF > algorithm.conf
+$ALG_NAME {
+    dataapi-url = "$data_api_url"
+    dataapi-token = "$auth_token"
+    keystore = $HTRC_DEPENDENCY_DIR/algorithm_certs/algorithm.p12
+    keystore-pwd = TDU-2F4-n5k-5ln
+    output = $output_dir
+    language = $language
+    num-cores = $num_cores
+}
+EOF
+
+# the workset file contains a header row; subsequent rows begin with a volume
+# id which may or may not be followed by other fields separated with commas;
+# remove the header row, and extra fields to provide a list of volume ids to
+# the algorithm
+
 ALG_ARGS=" \
-  --dataapi-url \"$data_api_url\" \
-  -o \"$output_dir\" \
-  -l \"$language\" \
-  -c \"$num_cores\" \
-  <(sed 1d \"$workset\") \
+  --config algorithm.conf \
+  <(sed 1d \"$workset\" | awk -F, '{ print \$1 }') \
 "
 
 ALG_JAVA_OPTS="-J-showversion"
@@ -66,13 +81,12 @@ ALG_JAVA_OPTS="-J-showversion"
 
 ### DO NOT MODIFY BELOW THIS LINE ###
 
-eval DATAAPI_TOKEN="$auth_token" \
-    $ALG_HOME/bin/$ALG_NAME $ALG_JAVA_OPTS -- $ALG_ARGS &
+eval $ALG_HOME/bin/$ALG_NAME $ALG_JAVA_OPTS -- $ALG_ARGS &
 
 CHILD_PID="$!"
 wait
 
 if [[ $? == 0 ]]; then
-    echo "vol_id,page_seq,entity,type" > "$output_dir"/entities.csv
-    cat "$output_dir"/csv/* >> "$output_dir"/entities.csv && rm -rf "$output_dir"/csv
+echo "vol_id,page_seq,entity,type" > "$output_dir"/entities.csv
+cat "$output_dir"/csv/* >> "$output_dir"/entities.csv && rm -rf "$output_dir"/csv
 fi
