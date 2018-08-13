@@ -3,42 +3,89 @@
         <name>Named_Entity_Recognizer</name>
         <short_name>NER</short_name>
         <version>2.0</version>
-        <shortdesc>TBD</shortdesc>
-        <description>TBD</description>
+        <shortdesc>Generate a list of all of the names of people and places, as well as dates,
+            times, percentages, and monetary terms, found in a workset. You can choose which
+            entities you would like to extract. Can be run on worksets of fewer than 3000 volumes,
+            as long as the total size of the workset is less than 3 GB.
+        </shortdesc>
+        <description>Generate a list of all of the names of people and places, as well as dates,
+            times, percentages, and monetary terms, found in a workset. You can choose which
+            entities you would like to extract. Can be run on worksets of fewer than 3000 volumes,
+            as long as the total size of the workset is less than 3 GB.
+
+            **How it works:**
+
+            &#8226; performs header/body/footer identification
+
+            &#8226; extracts body text only for analysis
+
+            &#8226; combines of end-of-line hyphenated words in order to de-hyphenate the text
+
+            &#8226; tokenizes the text using the Stanford NLP model for the language specified by
+            the user
+
+            &#8226; performs entity recognition/extraction using the Stanford Named Entity
+            Recognizer
+
+            &#8226; shuffles the entities found on each page (to prevent aiding page reconstruction)
+
+            &#8226; saves the resulting entities to a file
+
+            **Result of job:** table of the named entities found in a workset
+
+        </description>
         <authors>
             <author name="Boris Capitanu"/>
         </authors>
         <supportUrl>https://github.com/htrc/HTRC-Alg-NER/issues</supportUrl>
-        
+
         <parameters>
-            <param
-                name="input_collection"
-                type="collection"
-                required="true">
+            <param name="input_collection"
+                   type="collection"
+                   size_limit="3000"
+                   required="true">
                 <label>Please select a workset for analysis</label>
-                <description>The workset containing the volume ids to be used for analysis.</description>
+                <description>Select a collection for analysis.</description>
             </param>
-            <param
-                name="language"
-                type="string"
-                required="true">
-                <label>Please specify ISO 639-1 language code representing the predominant language in your workset</label>
-                <description>For a list of language codes, see: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes</description>
+            <param name="language"
+                   type="string"
+                   required="true">
+                <label>Please specify the predominant language in your workset</label>
+                <description>Enter the code for the language most prevalent in your workset, and
+                    your text will be tokenized following rules for that language. For English,
+                    enter en. This algorithm supports the following languages only: English (en),
+                    French (fr), Arabic (ar), Chinese (zh), German (de), and Spanish (es).
+                </description>
             </param>
         </parameters>
     </info>
-    
+
+    <!-- walltime should have the form hhh:mm:ss or hh:mm:ss -->
+    <!-- allocating a larger no. of processors per node is not always to obtain more processors, but sometimes to obtain access to all the resources, such as memory, on a node -->
     <execution_info>
-        <number_of_processors>8</number_of_processors>
+        <input_size min="0" max="500">
+            <number_of_nodes>1</number_of_nodes>
+            <number_of_processors_per_node>8</number_of_processors_per_node>
+            <walltime>02:00:00</walltime>
+            <java_max_heap_size>10g</java_max_heap_size>
+        </input_size>
+        <input_size min="501" max="3000">
+            <number_of_nodes>1</number_of_nodes>
+            <number_of_processors_per_node>16</number_of_processors_per_node>
+            <walltime>07:00:00</walltime>
+            <java_max_heap_size>28g</java_max_heap_size>
+        </input_size>
     </execution_info>
-    
+
+
     <run_script>run_NamedEntityRecognizer.sh</run_script>
     <properties_file_name>NamedEntityRecognizer.properties</properties_file_name>
-    
+
     <dependencies>
-        <dependency name="run_NamedEntityRecognizer.sh" path="dependencies/run_NamedEntityRecognizer.sh"/>
+        <dependency name="run_NamedEntityRecognizer.sh"
+                    path="dependencies/run_NamedEntityRecognizer.sh"/>
     </dependencies>
-    
+
     <system_properties>
         <e key="data_api_url">$data_api_url</e>
         <e key="auth_token">$auth_token</e>
@@ -47,7 +94,7 @@
         <e key="language">$language</e>
         <e key="num_cores">8</e>
     </system_properties>
-    
+
     <results>
         <result type="text/csv" name="entities.csv"/>
         <result type="text/plain" name="volume_errors.txt"/>
